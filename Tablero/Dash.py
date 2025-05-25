@@ -10,10 +10,10 @@ import joblib
 
 # Cargar datos y modelo 
 df = pd.read_csv("/Users/valeriacardenas/Desktop/proyecto2/Tablero/Datos2011Limipios.csv")
-modelo = tf.keras.models.load_model("/Users/valeriacardenas/Desktop/proyecto2/Modelamiento/modelos_guardados/mejor_modelo.keras")
+modelo = tf.keras.models.load_model("/Users/valeriacardenas/Desktop/proyecto2/Modelamiento/modelo.keras")
 
 # Cargar columnas esperadas desde archivo pkl
-columnas_esperadas = joblib.load("/Users/valeriacardenas/Desktop/proyecto2/Modelamiento/modelos_guardados/columns_info_limpio.pkl")
+columnas_esperadas = joblib.load("/Users/valeriacardenas/Desktop/proyecto2/Modelamiento/info_modelo.pkl")
 if isinstance(columnas_esperadas, dict):
     columnas_esperadas = list(columnas_esperadas.keys())
 
@@ -219,7 +219,6 @@ def actualizar_municipios(depto):
         return [], True
     municipios = df[df['cole_depto_ubicacion'] == depto]['cole_mcpio_ubicacion'].dropna().unique()
     return [{'label': m, 'value': m} for m in sorted(municipios)], False
-
 
 
 #evaluar
