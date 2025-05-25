@@ -12,19 +12,26 @@ import joblib
 df = pd.read_csv("/Users/valeriacardenas/Desktop/proyecto2/Tablero/Datos2011Limipios.csv")
 modelo = tf.keras.models.load_model("/Users/valeriacardenas/Desktop/proyecto2/Modelamiento/modelo.keras")
 
-# Cargar columnas esperadas desde archivo pkl
-columnas_esperadas = joblib.load("/Users/valeriacardenas/Desktop/proyecto2/Modelamiento/info_modelo.pkl")
-if isinstance(columnas_esperadas, dict):
-    columnas_esperadas = list(columnas_esperadas.keys())
+# Cargar información de preprocesamiento
+with open("/Users/valeriacardenas/Desktop/proyecto2/Modelamiento/info_modelo.pkl", "rb") as f:
+    prep_info = joblib.load(f)
 
-# Extraer categorías directamente de las columnas esperadas 
-deptos = [col.replace("cole_depto_ubicacion_", "") for col in columnas_esperadas if col.startswith("cole_depto_ubicacion_")]
-jornadas = [col.replace("cole_jornada_", "") for col in columnas_esperadas if col.startswith("cole_jornada_")]
-nats = [col.replace("cole_naturaleza_", "") for col in columnas_esperadas if col.startswith("cole_naturaleza_")]
-mcpios = [col.replace("cole_mcpio_ubicacion_", "") for col in columnas_esperadas if col.startswith("cole_mcpio_ubicacion_")]
-ed_madre = [col.replace("fami_educacionmadre_", "") for col in columnas_esperadas if col.startswith("fami_educacionmadre_")]
-ed_padre = [col.replace("fami_educacionpadre_", "") for col in columnas_esperadas if col.startswith("fami_educacionpadre_")]
-estratos = [col.replace("fami_estratovivienda_", "") for col in columnas_esperadas if col.startswith("fami_estratovivienda_")]
+# Extraer columnas esperadas y codificadores
+categorical_columns = prep_info['categorical_columns']
+feature_columns = prep_info['feature_columns']
+encoders = prep_info['encoders']
+
+# Extraer categorías directamente desde los encoders
+def get_categories(prefix):
+    return list({val for col, le in encoders.items() if col.startswith(prefix) for val in le.classes_})
+
+departamentos = get_categories("cole_depto_ubicacion")
+jornadas = get_categories("cole_jornada")
+nats = get_categories("cole_naturaleza")
+mcpios = get_categories("cole_mcpio_ubicacion")
+ed_madre = get_categories("fami_educacionmadre")
+ed_padre = get_categories("fami_educacionpadre")
+estratos = get_categories("fami_estratovivienda")
 
 # Variables seleccionadas
 features = [
@@ -37,7 +44,7 @@ features = [
     'fami_estratovivienda'
 ]
 
-# Nombres de facil comprension
+# Nombres de facil comprension para el usuario
 nombres = {
     'cole_depto_ubicacion': 'Departamento del colegio',
     'cole_jornada': 'Jornada escolar',
@@ -48,11 +55,11 @@ nombres = {
     'fami_estratovivienda': 'Estrato socioeconómico'
 }
 
-# Inicializar dash
+# Inicializar Dash
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.title = "Simulador Saber 11 - Inglés"
 
-# Layout del dash
+# Layout
 app.layout = dbc.Container([
     html.H2("Simulador de Desempeño en Inglés en las Pruebas Saber 11", className="text-center mt-4"),
     html.P("Bienvenido, si eres estudiante, con este simulador podrás estimar tu perfil de desempeño en la prueba de inglés del examen Saber 11 según tus características",
@@ -62,17 +69,14 @@ app.layout = dbc.Container([
     dbc.Alert([
         html.H5("¿Cómo usar el simulador?", className="alert-heading"),
         html.Ul([
-
             html.Li([
                 html.Strong("1. Analiza los patrones de desempeño: "),
                 "Explora las gráficas superiores que muestran las características comunes de estudiantes con alto desempeño en inglés. Observa cómo factores como el estrato socioeconómico y el tipo de colegio se relacionan con los resultados."
             ], className="mb-2"),
-            
             html.Li([
                 html.Strong("2. Completa tu información personal: "),
                 "En la sección 'Simula tu perfil', selecciona todas las opciones que correspondan a tu situación actual: departamento, municipio, tipo de institución educativa, jornada escolar, nivel educativo de tus padres y estrato socioeconómico."
             ], className="mb-2"),
-            
             html.Li([
                 html.Strong("3. Obtén tu evaluación personalizada: "),
                 "Al hacer clic en 'Evaluar mi perfil', recibirás una predicción basada en modelos estadísticos que compara tu perfil con los patrones de estudiantes exitosos. El sistema te indicará si tu perfil se asemeja más a un desempeño ",
@@ -81,18 +85,13 @@ app.layout = dbc.Container([
                 html.Strong("no exitoso", className="text-danger"),
                 "."
             ], className="mb-2"),
-                
-            
         ])
     ], color="info"),
 
     html.Hr(),
-
-    
     html.H4("Características de estudiantes con mejores resultados", className="mt-4"),
 
     dbc.Row([
-        # Gráfico de barras por estrato
         dbc.Col(dcc.Graph(
             figure=px.bar(
                 df[df["resultado"] == "exitoso"]["fami_estratovivienda"].value_counts().reset_index(),
@@ -101,13 +100,9 @@ app.layout = dbc.Container([
                 title="Número de estudiantes exitosos por estrato socioeconómico",
                 labels={'fami_estratovivienda': 'Estrato', 'count': 'Número de estudiantes'},
                 color="fami_estratovivienda"
-                
-            ).update_layout(
-                showlegend=False,
-            )
+            ).update_layout(showlegend=False)
         ), width=5),
 
-        # Mapa de calor por educación de padres
         dbc.Col(dcc.Graph(
             figure=px.density_heatmap(
                 df[df["resultado"] == "exitoso"],
@@ -124,7 +119,6 @@ app.layout = dbc.Container([
         ), width=7)
     ], className="mb-4"),
 
-    # Boxplot de los departamentos
     dbc.Row([
         dbc.Col(dcc.Graph(
             figure=px.box(
@@ -142,21 +136,19 @@ app.layout = dbc.Container([
         ), width=12)
     ], className="mb-4"),
 
-    
     html.H5("Simula tu perfil", className="mt-4"),
 
-    # Inputs del usuario
     dbc.Row([
         dbc.Col([
             dbc.Label(nombres['cole_depto_ubicacion']),
             dcc.Dropdown(id='input-cole_depto_ubicacion',
-                         options=[{'label': d, 'value': d} for d in sorted(set(deptos))],
+                         options=[{'label': d, 'value': d} for d in sorted(departamentos)],
                          placeholder="Selecciona departamento")
         ], width=6),
         dbc.Col([
             dbc.Label(nombres['cole_jornada']),
             dcc.Dropdown(id='input-cole_jornada',
-                         options=[{'label': j, 'value': j} for j in sorted(set(jornadas))],
+                         options=[{'label': j, 'value': j} for j in sorted(jornadas)],
                          placeholder="Selecciona jornada")
         ], width=6)
     ], className="mb-3"),
@@ -165,16 +157,15 @@ app.layout = dbc.Container([
         dbc.Col([
             dbc.Label(nombres['cole_mcpio_ubicacion']),
             dcc.Dropdown(id='input-cole_mcpio_ubicacion',
-                        options=[],
-                        placeholder="Selecciona municipio según departamento",
-                        disabled=True)
+                         options=[],
+                         placeholder="Selecciona municipio según departamento",
+                         disabled=True)
         ], width=6),
-
 
         dbc.Col([
             dbc.Label(nombres['cole_naturaleza']),
             dcc.Dropdown(id='input-cole_naturaleza',
-                         options=[{'label': n, 'value': n} for n in sorted(df['cole_naturaleza'].dropna().unique())],
+                         options=[{'label': n, 'value': n} for n in sorted(nats)],
                          placeholder="Selecciona tipo de institución")
         ], width=6)
     ], className="mb-3"),
@@ -183,13 +174,13 @@ app.layout = dbc.Container([
         dbc.Col([
             dbc.Label(nombres['fami_educacionmadre']),
             dcc.Dropdown(id='input-fami_educacionmadre',
-                         options=[{'label': e, 'value': e} for e in sorted(set(ed_madre))],
+                         options=[{'label': e, 'value': e} for e in sorted(ed_madre)],
                          placeholder="Selecciona educación madre")
         ], width=6),
         dbc.Col([
             dbc.Label(nombres['fami_educacionpadre']),
             dcc.Dropdown(id='input-fami_educacionpadre',
-                         options=[{'label': e, 'value': e} for e in sorted(set(ed_padre))],
+                         options=[{'label': e, 'value': e} for e in sorted(ed_padre)],
                          placeholder="Selecciona educación padre")
         ], width=6)
     ], className="mb-3"),
@@ -198,7 +189,7 @@ app.layout = dbc.Container([
         dbc.Col([
             dbc.Label(nombres['fami_estratovivienda']),
             dcc.Dropdown(id='input-fami_estratovivienda',
-                         options=[{'label': e, 'value': e} for e in sorted(set(estratos))],
+                         options=[{'label': e, 'value': e} for e in sorted(estratos)],
                          placeholder="Selecciona estrato")
         ], width=6),
     ], className="mb-3"),
@@ -208,7 +199,7 @@ app.layout = dbc.Container([
 
 ], fluid=True)
 
-
+# Callback para que la lista de municipios dependa del departamento seleccionad
 @app.callback(
     Output('input-cole_mcpio_ubicacion', 'options'),
     Output('input-cole_mcpio_ubicacion', 'disabled'),
@@ -220,8 +211,7 @@ def actualizar_municipios(depto):
     municipios = df[df['cole_depto_ubicacion'] == depto]['cole_mcpio_ubicacion'].dropna().unique()
     return [{'label': m, 'value': m} for m in sorted(municipios)], False
 
-
-#evaluar
+# Callback para evaluar el perfil
 @app.callback(
     Output("resultado-evaluacion", "children"),
     Input("btn-evaluar", "n_clicks"),
@@ -237,30 +227,37 @@ def evaluar_perfil(n_clicks, *inputs):
     entrada = dict(zip(features, inputs))
     df_input = pd.DataFrame([entrada])
 
-    # Codificar todas las variables categóricas
-    df_dummies = pd.get_dummies(df_input)
-
-    # Crear DataFrame con todas las columnas esperadas en ceros
-    df_final = pd.DataFrame(columns=columnas_esperadas)
-    df_final.loc[0] = 0
-
-    # Solo copiar columnas que existen en df_final
-    for col in df_dummies.columns:
-        if col in df_final.columns:
-            df_final.at[0, col] = float(df_dummies.at[0, col])
-
-    X_input = df_final.astype(np.float32).values
-
     try:
-        pred = modelo.predict(X_input)[0][0]
-        resultado = "EXITOSO" if pred > 0.5 else "NO EXITOSO"
+        # Codificar variables categóricas
+        for col in categorical_columns:
+            if col in df_input.columns:
+                df_input[col] = df_input[col].fillna('unknown')
+                le = encoders[col]
+                df_input[col] = df_input[col].astype(str).apply(lambda x: x if x in le.classes_ else le.classes_[0])
+                df_input[col] = le.transform(df_input[col])
+        
+        # Normalizar
+        X_scaled = prep_info['scaler'].transform(df_input[feature_columns])
 
-        color = "success" if pred > 0.5 else "danger"
-        return dbc.Alert(f"Tu perfil fue clasificado como: {resultado}", color=color)
+        # Predecir
+        prob = modelo.predict(X_scaled, verbose=0)[0][0]
+        if prob > 0.5:
+            resultado = "EXITOSO"
+            prob_mostrar = prob
+            color = "success"
+        else:
+            resultado = "NO EXITOSO"
+            prob_mostrar = 1 - prob
+            color = "danger"
+
+        porcentaje = round(prob_mostrar * 100)
+
+        return dbc.Alert(f"Tu perfil fue clasificado como: {resultado} con una probabilidad del {porcentaje}% en la prueba de inglés", color=color)
+
+
     except Exception as e:
         return dbc.Alert(f"Error al predecir: {str(e)}", color="danger")
 
-
-# ejecutar
+# Ejecutar servidor
 if __name__ == "__main__":
     app.run_server(debug=True)
