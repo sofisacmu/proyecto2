@@ -54,23 +54,78 @@ app.title = "Simulador Saber 11 - Inglés"
 
 # Layout del dash
 app.layout = dbc.Container([
-    html.H2("Simulador de Desempeño en Inglés - Pruebas Saber 11", className="text-center mt-4"),
-    html.P("Este tablero te permite estimar tu perfil de desempeño en la prueba de inglés del examen Saber 11.",
+    html.H2("Simulador de Desempeño en Inglés en las Pruebas Saber 11", className="text-center mt-4"),
+    html.P("Si eres estudiante, con este simulador podrás estimar tu perfil de desempeño en la prueba de inglés del examen Saber 11 según tus características",
            className="lead text-center"),
     html.Hr(),
 
     dbc.Alert([
         html.H5("Instrucciones:", className="alert-heading"),
         html.Ul([
-            html.Li("1. Observa las gráficas sobre estudiantes exitosos."),
-            html.Li("2. Ingresa tus características en el simulador."),
-            html.Li("3. Conoce si tu perfil se asemeja a un desempeño exitoso."),
+            html.Li("1. Observa las gráficas sobre estudiantes exitosos"),
+            html.Li("2. Ingresa tus características en el simulador"),
+            html.Li("3. Conoce si tu perfil se asemeja a un desempeño exitoso o no exitoso"),
         ])
     ], color="info"),
 
     html.Hr(),
 
-    html.H4("Simula tu perfil", className="mt-4"),
+    
+    html.H4("Características de estudiantes con mejores resultados", className="mt-4"),
+
+    dbc.Row([
+        # Gráfico de barras por estrato
+        dbc.Col(dcc.Graph(
+            figure=px.bar(
+                df[df["resultado"] == "exitoso"]["fami_estratovivienda"].value_counts().reset_index(),
+                x="fami_estratovivienda",
+                y="count",
+                title="Número de estudiantes exitosos por estrato socioeconómico",
+                labels={'fami_estratovivienda': 'Estrato', 'count': 'Número de estudiantes'},
+                color="fami_estratovivienda"
+                
+            ).update_layout(
+                showlegend=False,
+            )
+        ), width=5),
+
+        # Mapa de calor por educación de padres
+        dbc.Col(dcc.Graph(
+            figure=px.density_heatmap(
+                df[df["resultado"] == "exitoso"],
+                x="fami_educacionmadre",
+                y="fami_educacionpadre",
+                z="punt_ingles",
+                histfunc="avg",
+                title="Puntaje de inglés según educación de los padres"
+            ).update_layout(
+                xaxis_title="Educación de la madre",
+                yaxis_title="Educación del padre",
+                plot_bgcolor='white'
+            ).update_coloraxes(colorbar_title="Promedio puntaje de inglés")
+        ), width=7)
+    ], className="mb-4"),
+
+    # Boxplot de los departamentos
+    dbc.Row([
+        dbc.Col(dcc.Graph(
+            figure=px.box(
+                df[df["resultado"] == "exitoso"],
+                x="cole_depto_ubicacion",
+                y="punt_ingles",
+                title="Distribución de puntajes por departamento",
+                labels={'cole_depto_ubicacion': 'Departamento', 'punt_ingles': 'Puntaje inglés'}
+            ).update_layout(
+                showlegend=False,
+                xaxis={'categoryorder': 'total descending', 'tickangle': 45},
+                plot_bgcolor='white',
+                margin=dict(b=120)
+            )
+        ), width=12)
+    ], className="mb-4"),
+
+    
+    html.H5("Simula tu perfil", className="mt-4"),
 
     # Inputs del usuario
     dbc.Row([
@@ -182,9 +237,9 @@ def evaluar_perfil(n_clicks, *inputs):
     try:
         pred = modelo.predict(X_input)[0][0]
         resultado = "EXITOSO" if pred > 0.5 else "NO EXITOSO"
-        probabilidad = f"{pred*100:.1f}%" if pred > 0.5 else f"{(1 - pred)*100:.1f}%"
+
         color = "success" if pred > 0.5 else "danger"
-        return dbc.Alert(f"Tu perfil fue clasificado como: {resultado} (Probabilidad: {probabilidad})", color=color)
+        return dbc.Alert(f"Tu perfil fue clasificado como: {resultado}", color=color)
     except Exception as e:
         return dbc.Alert(f"Error al predecir: {str(e)}", color="danger")
 
