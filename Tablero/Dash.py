@@ -55,16 +55,34 @@ app.title = "Simulador Saber 11 - Inglés"
 # Layout del dash
 app.layout = dbc.Container([
     html.H2("Simulador de Desempeño en Inglés en las Pruebas Saber 11", className="text-center mt-4"),
-    html.P("Si eres estudiante, con este simulador podrás estimar tu perfil de desempeño en la prueba de inglés del examen Saber 11 según tus características",
+    html.P("Bienvenido, si eres estudiante, con este simulador podrás estimar tu perfil de desempeño en la prueba de inglés del examen Saber 11 según tus características",
            className="lead text-center"),
     html.Hr(),
 
     dbc.Alert([
-        html.H5("Instrucciones:", className="alert-heading"),
+        html.H5("¿Cómo usar el simulador?", className="alert-heading"),
         html.Ul([
-            html.Li("1. Observa las gráficas sobre estudiantes exitosos"),
-            html.Li("2. Ingresa tus características en el simulador"),
-            html.Li("3. Conoce si tu perfil se asemeja a un desempeño exitoso o no exitoso"),
+
+            html.Li([
+                html.Strong("1. Analiza los patrones de desempeño: "),
+                "Explora las gráficas superiores que muestran las características comunes de estudiantes con alto desempeño en inglés. Observa cómo factores como el estrato socioeconómico y el tipo de colegio se relacionan con los resultados."
+            ], className="mb-2"),
+            
+            html.Li([
+                html.Strong("2. Completa tu información personal: "),
+                "En la sección 'Simula tu perfil', selecciona todas las opciones que correspondan a tu situación actual: departamento, municipio, tipo de institución educativa, jornada escolar, nivel educativo de tus padres y estrato socioeconómico."
+            ], className="mb-2"),
+            
+            html.Li([
+                html.Strong("3. Obtén tu evaluación personalizada: "),
+                "Al hacer clic en 'Evaluar mi perfil', recibirás una predicción basada en modelos estadísticos que compara tu perfil con los patrones de estudiantes exitosos. El sistema te indicará si tu perfil se asemeja más a un desempeño ",
+                html.Strong("exitoso", className="text-success"),
+                " o ",
+                html.Strong("no exitoso", className="text-danger"),
+                "."
+            ], className="mb-2"),
+                
+            
         ])
     ], color="info"),
 
